@@ -283,7 +283,7 @@
 
         try {
           // fetchFromGASを呼び出して通信
-          const data = await fetchFromGAS(payload, "gemini-2.5-flash-preview-09-2025");
+          const data = await fetchFromGAS(payload, "gemini-2.5-flash");
           
           if (data.error) {
              throw new Error(data.error);
