@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>定期試験ライティングトレーナー</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel (ブラウザ内でJSXをコンパイル) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* アニメーション用スタイル */
+    @keyframes pulse { 50% { opacity: .5; } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeInSlideUp 0.6s ease-out forwards; }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    // =========================================================================
+    // 【重要】GASをデプロイして発行された「ウェブアプリのURL」をここに貼り付けます
+    // =========================================================================
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWEhHQlZiu-tW3qn6ycWeYcEh0zmUMoW4TlAyTWsm6SDnOw8zd9zwzESqHWgE0jFR2/exec";
+
+    const Icons = {
+      FileEdit: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-5.5"/><polyline points="14 2 14 8 20 8"/><path d="M10.42 12.61a2.1 2.1 0 1 1 2.97 2.97L7.95 21 4 22l.99-3.95 5.43-5.44Z"/></svg>
+      ),
+      CheckCircle: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      ),
+      AlertCircle: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      ),
+      Zap: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      ),
+      RefreshCw: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      ),
+      Sparkles: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+      ),
+      History: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+      ),
+      X: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      ),
+      Clock: ({ size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      )
+    };
+
+    const TOURS = {
+      ninja: {
+        id: 'ninja',
+        title: 'Miracle Ninja Tour',
+        description: '外国人観光客用に、忍者体験ツアーを紹介するWebページを作成しています。与えられたキーワードを3つ以上使いながら、5文でツアーの紹介文を書きなさい。（読み手に興味を持ってもらえるように書くこと）',
+        keywords: ['villages', 'Iga', 'Koka', 'costumes', 'training']
+      },
+      food: {
+        id: 'food',
+        title: 'Japanese Food Cooking Tour',
+        description: '外国人観光客用に、日本の料理体験ツアーを紹介するWebページを作成しています。与えられたキーワードを3つ以上使いながら、5文でツアーの紹介文を書きなさい。（読み手に興味を持ってもらえるように書くこと）',
+        keywords: ['sushi', 'market', 'fresh', 'ingredients', 'delicious']
+      },
+      kimono: {
+        id: 'kimono',
+        title: 'Kyoto Kimono Tour',
+        description: '外国人観光客用に、京都での着物体験ツアーを紹介するWebページを作成しています。与えられたキーワードを3つ以上使いながら、5文でツアーの紹介文を書きなさい。（読み手に興味を持ってもらえるように書くこと）',
+        keywords: ['temples', 'beautiful', 'traditional', 'walk', 'pictures']
+      }
+    };
+
+    const TourIllustration = ({ tourId }) => {
+      const illustrations = {
+        ninja: { bg: 'bg-slate-800', emoji: '🥷 🏯 ⚔️', border: 'border-slate-700' },
+        food: { bg: 'bg-orange-50', emoji: '🍣 👨‍🍳 🐟', border: 'border-orange-200' },
+        kimono: { bg: 'bg-fuchsia-50', emoji: '👘 ⛩️ 📸', border: 'border-fuchsia-200' }
+      };
+      const current = illustrations[tourId];
+      return (
+        <div className={`w-full h-32 ${current.bg} border ${current.border} rounded-xl flex items-center justify-center text-5xl shadow-inner mb-6 transition-all duration-300`}>
+          {current.emoji}
+        </div>
+      );
+    };
+
+    const TeacherAvatar = ({ score }) => {
+      let expression = 'happy';
+      if (score < 5) expression = 'sad';
+      else if (score < 8) expression = 'neutral';
+
+      return (
+        <div className="relative shrink-0">
+          <svg width="100" height="100" viewBox="0 0 100 100" className="drop-shadow-md">
+            <path d="M 20 40 Q 20 10 50 10 Q 80 10 80 40 L 80 75 Q 80 95 50 95 Q 20 95 20 75 Z" fill="#8b5cf6" />
+            <path d="M 30 50 Q 30 35 50 35 Q 70 35 70 50 L 70 75 Q 70 85 50 85 Q 30 85 30 75 Z" fill="#ede9fe" />
+            <circle cx="35" cy="40" r="14" fill="white" />
+            <circle cx="65" cy="40" r="14" fill="white" />
+            <path d="M 45 48 L 55 48 L 50 58 Z" fill="#fbbf24" />
+            <circle cx="35" cy="40" r="14" fill="none" stroke="#4c1d95" strokeWidth="3" />
+            <circle cx="65" cy="40" r="14" fill="none" stroke="#4c1d95" strokeWidth="3" />
+            <line x1="49" y1="40" x2="51" y2="40" stroke="#4c1d95" strokeWidth="3" />
+
+            {expression === 'happy' && (
+              <React.Fragment>
+                <path d="M 26 40 Q 35 30 44 40" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                <path d="M 56 40 Q 65 30 74 40" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="22" cy="50" r="4" fill="#fca5a5" opacity="0.8" />
+                <circle cx="78" cy="50" r="4" fill="#fca5a5" opacity="0.8" />
+              </React.Fragment>
+            )}
+            {expression === 'neutral' && (
+              <React.Fragment>
+                <circle cx="35" cy="40" r="4" fill="#1e293b" />
+                <circle cx="65" cy="40" r="4" fill="#1e293b" />
+              </React.Fragment>
+            )}
+            {expression === 'sad' && (
+              <React.Fragment>
+                <path d="M 28 35 L 42 42" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                <path d="M 72 35 L 58 42" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="35" cy="42" r="3" fill="#1e293b" />
+                <circle cx="65" cy="42" r="3" fill="#1e293b" />
+              </React.Fragment>
+            )}
+          </svg>
+          {expression === 'happy' && (
+            <div className="absolute -top-2 -right-2 text-yellow-400 animate-pulse">
+              <Icons.Sparkles size={24} />
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    function App() {
+      const [selectedTourId, setSelectedTourId] = useState('ninja');
+      const [inputText, setInputText] = useState('');
+      const [isGradingLoading, setIsGradingLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState('');
+      const resultRef = useRef(null);
+
+      const [history, setHistory] = useState([]);
+      const [showHistory, setShowHistory] = useState(false);
+
+      // エナジー機能管理
+      const MAX_ENERGY = 3;
+      const RECOVERY_TIME_MS = 60 * 60 * 1000; // 1時間
+      const [energy, setEnergy] = useState(MAX_ENERGY);
+      const [nextRecoveryTime, setNextRecoveryTime] = useState(null);
+      const [timeLeftStr, setTimeLeftStr] = useState("");
+
+      const currentTour = TOURS[selectedTourId];
+
+      useEffect(() => {
+        const savedHistory = localStorage.getItem('grading_history');
+        if (savedHistory) {
+          try {
+            setHistory(JSON.parse(savedHistory));
+          } catch (e) {
+            console.error("Failed to parse history", e);
+          }
+        }
+
+        const savedEnergyData = localStorage.getItem('grading_energy');
+        const now = Date.now();
+        if (savedEnergyData) {
+          try {
+            const { energy: savedEnergy, nextRecoveryTime: savedNextTime } = JSON.parse(savedEnergyData);
+            if (savedEnergy >= MAX_ENERGY) {
+              setEnergy(MAX_ENERGY);
+              setNextRecoveryTime(null);
+            } else {
+              if (now >= savedNextTime) {
+                const timePastRecovery = now - savedNextTime;
+                const additionalRecoveries = Math.floor(timePastRecovery / RECOVERY_TIME_MS);
+                const totalRecovered = 1 + additionalRecoveries;
+                const newEnergy = Math.min(savedEnergy + totalRecovered, MAX_ENERGY);
+                setEnergy(newEnergy);
+                
+                if (newEnergy === MAX_ENERGY) {
+                  setNextRecoveryTime(null);
+                  localStorage.setItem('grading_energy', JSON.stringify({ energy: MAX_ENERGY, nextRecoveryTime: null }));
+                } else {
+                  const newNextTime = savedNextTime + (totalRecovered * RECOVERY_TIME_MS);
+                  setNextRecoveryTime(newNextTime);
+                  localStorage.setItem('grading_energy', JSON.stringify({ energy: newEnergy, nextRecoveryTime: newNextTime }));
+                }
+              } else {
+                setEnergy(savedEnergy);
+                setNextRecoveryTime(savedNextTime);
+              }
+            }
+          } catch(e) {
+            setEnergy(MAX_ENERGY);
+          }
+        }
+      }, []);
+
+      useEffect(() => {
+        if (energy >= MAX_ENERGY || !nextRecoveryTime) {
+          setTimeLeftStr("");
+          return;
+        }
+
+        const intervalId = setInterval(() => {
+          const now = Date.now();
+          const diff = nextRecoveryTime - now;
+
+          if (diff <= 0) {
+            setEnergy(prev => {
+              const newEnergy = Math.min(prev + 1, MAX_ENERGY);
+              if (newEnergy === MAX_ENERGY) {
+                setNextRecoveryTime(null);
+                localStorage.setItem('grading_energy', JSON.stringify({ energy: newEnergy, nextRecoveryTime: null }));
+              } else {
+                const newNextTime = nextRecoveryTime + RECOVERY_TIME_MS;
+                setNextRecoveryTime(newNextTime);
+                localStorage.setItem('grading_energy', JSON.stringify({ energy: newEnergy, nextRecoveryTime: newNextTime }));
+              }
+              return newEnergy;
+            });
+          } else {
+            const m = Math.floor(diff / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            setTimeLeftStr(`${m}分${s.toString().padStart(2, '0')}秒`);
+          }
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+      }, [energy, nextRecoveryTime]);
+
+      useEffect(() => {
+        if (result && resultRef.current) {
+          setTimeout(() => {
+            resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      }, [result]);
+
+      const fetchFromGAS = async (payload, model) => {
+        if (GAS_WEB_APP_URL === "YOUR_GAS_WEB_APP_URL_HERE") {
+          throw new Error("GASのウェブアプリURLが設定されていません。コードを編集してURLを設定してください。");
+        }
+        const requestData = { model: model, payload: payload };
+        const response = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify(requestData)
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+      };
+
+      const handleGrade = async () => {
+        if (energy <= 0) {
+          setError('採点エナジーが足りません。回復するまでお待ちください。');
+          return;
+        }
+        if (!inputText.trim()) {
+          setError('英文を入力してください。');
+          return;
+        }
+
+        setIsGradingLoading(true);
+        setError('');
+        setResult(null);
+
+        // エナジーを消費
+        const newEnergy = energy - 1;
+        const now = Date.now();
+        const newNextTime = energy === MAX_ENERGY ? now + RECOVERY_TIME_MS : nextRecoveryTime;
+        setEnergy(newEnergy);
+        setNextRecoveryTime(newNextTime);
+        localStorage.setItem('grading_energy', JSON.stringify({ energy: newEnergy, nextRecoveryTime: newNextTime }));
+
+        const systemPrompt = `
+        あなたは高校の優しくて指導力のある英語教師です。生徒が書いた英作文を採点し、フィードバックを与えます。
+        
+        【問題】
+        外国人観光客向けに、「${currentTour.title}」を紹介するWebページ用の文章を5文で作成する。
+        指定キーワード（${currentTour.keywords.join(', ')}）のうち、3つ以上を使用すること。
+        
+        【採点基準（※生徒には秘密裏に計算すること）】
+        ・10点満点。1文あたり最大2点 × 最大5文。
+        ・2点：意味が明確に伝わる。（冠詞や複数形のsの抜けなど、意味に支障のない細かいミスは許容して満点とする）
+        ・1点：言いたいことは推測できるが、重大な文法ミス（主語と動詞の不一致、時制の誤り、品詞の誤用など）がある。
+        ・0点：意味が全く通じない。
+        
+        【⚠️重要：内容の逸脱に対する厳格な採点（0点基準）】
+        生徒が書いた各文が、本当に「${currentTour.title}」の【ツアー紹介】になっているかを厳しく判定してください。
+        以下のような文は、文法が完璧であっても【必ず0点】にしてください。
+        ・単なる個人の感想や好み（例："I like sushi.", "Ninja is cool."）
+        ・個人の願望（例："I want to eat sushi.", "I want to go to Kyoto."）
+        ・一般的な事実の羅列で、ツアーの活動に結びついていないもの（例："Fresh fish is delicious."）
+        
+        ※評価対象（点数を与える対象）となるのは、ツアーの魅力、体験できること、アピールポイントを説明している文のみです。（例："You can eat fresh sushi in this tour.", "This tour is famous for ninja."）
+        ※内容が逸脱しているため0点にした文がある場合、ヒントの中で「個人の感想や一般的な事実ではなく、"ツアーの紹介"になっているかな？」といった気づきを与えてください。
+        
+        【減点条件】
+        キーワードの使用が3つ未満の場合は合計点から -1点 してください。ただし、生徒が書いた文が全体で1〜2文しかない場合は減点しません。
+        
+        【フィードバックのルール（厳守！）】
+        1. 生徒を褒めて伸ばすトーンで接してください。
+        2. 採点基準（1文2点など）や、減点した内容の内訳は絶対に明示しないでください。
+        3. 「修正後の正しい英文（答え）」を直接教えないでください。
+        4. 生徒自身が間違いに気づけるような「ヒント」を出してください。
+        5. 文法ミスについては、「どんなことに気を付ければよいか」のアドバイスを添えてください。
+        
+        以下のJSONスキーマに従って出力してください。
+        `;
+
+        const payload = {
+          contents: [{ parts: [{ text: inputText }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                score: { type: "INTEGER", description: "10点満点の点数" },
+                generalComment: { type: "STRING", description: "全体に対する温かいコメントや、よくできている点の褒め言葉" },
+                hints: {
+                  type: "ARRAY",
+                  items: { type: "STRING" },
+                  description: "文法ミスや内容の逸脱に対する、答えを直接言わないヒントやアドバイスのリスト"
+                }
+              },
+              required: ["score", "generalComment", "hints"]
+            }
+          }
+        };
+
+        try {
+          const data = await fetchFromGAS(payload, "gemini-2.5-flash-preview-09-2025");
+          const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (resultText) {
+            const parsedResult = JSON.parse(resultText);
+            setResult(parsedResult);
+            
+            const newRecord = {
+              id: Date.now().toString(),
+              tourId: selectedTourId,
+              tourTitle: currentTour.title,
+              inputText: inputText,
+              score: parsedResult.score,
+              generalComment: parsedResult.generalComment,
+              hints: parsedResult.hints,
+              createdAt: Date.now()
+            };
+            
+            const newHistory = [newRecord, ...history];
+            setHistory(newHistory);
+            localStorage.setItem('grading_history', JSON.stringify(newHistory));
+
+          } else {
+            throw new Error("回答が正しく取得できませんでした。");
+          }
+        } catch (err) {
+          console.error(err);
+          setError(err.message || '採点中にエラーが発生しました。もう一度お試しください。');
+          
+          // エラー時は消費したエナジーを戻す
+          setEnergy(prev => {
+            const restored = Math.min(prev + 1, MAX_ENERGY);
+            if (restored === MAX_ENERGY) {
+              setNextRecoveryTime(null);
+              localStorage.setItem('grading_energy', JSON.stringify({ energy: restored, nextRecoveryTime: null }));
+            }
+            return restored;
+          });
+        } finally {
+          setIsGradingLoading(false);
+        }
+      };
+
+      const formatDate = (timestamp) => {
+        if (!timestamp) return '';
+        const d = new Date(timestamp);
+        return `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-12">
+          <header className="bg-purple-600 text-white p-4 shadow-md sticky top-0 z-10">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icons.FileEdit size={24} />
+                <h1 className="text-xl font-bold hidden sm:block">定期試験ライティングトレーナー</h1>
+                <h1 className="text-xl font-bold sm:hidden">ライティングトレ</h1>
+              </div>
+              
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* エナジー表示 */}
+                <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-1.5 bg-purple-800/80 px-2.5 py-1 rounded-full text-sm font-bold shadow-inner border border-purple-500/50">
+                    <Icons.Zap size={16} className={`${energy > 0 ? 'text-yellow-400 fill-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.6)]' : 'text-slate-400'}`} />
+                    <span className="tracking-wide">{energy} <span className="text-purple-300 font-normal text-xs">/ {MAX_ENERGY}</span></span>
+                  </div>
+                  {energy < MAX_ENERGY && (
+                     <span className="text-[10px] text-purple-200 mt-0.5 font-medium tracking-wider">あと {timeLeftStr}</span>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-1.5 text-sm bg-purple-500 hover:bg-purple-400 px-4 py-2 rounded-full font-bold transition-colors shadow-sm"
+                >
+                  <Icons.History size={18} />
+                  <span className="hidden sm:inline">履歴</span>
+                  {history.length > 0 && (
+                    <span className="bg-white text-purple-600 text-xs px-1.5 py-0.5 rounded-full ml-1 shadow-sm">
+                      {history.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto p-4 mt-4 space-y-6">
+            <div className="flex flex-col sm:flex-row gap-2 mb-2">
+              {Object.values(TOURS).map(tour => (
+                <button
+                  key={tour.id}
+                  onClick={() => {
+                    setSelectedTourId(tour.id);
+                    setInputText('');
+                    setResult(null);
+                    setError('');
+                  }}
+                  className={`flex-1 py-4 px-4 rounded-xl font-bold transition-all duration-200 border-b-4 text-center
+                    ${selectedTourId === tour.id 
+                      ? 'bg-purple-600 text-white border-purple-800 shadow-md transform translate-y-1 border-b-0 mt-1 mb-[3px]' 
+                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50 hover:text-purple-600 shadow-sm'
+                    }`}
+                >
+                  {tour.title}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6">
+                <TourIllustration tourId={selectedTourId} />
+                <p className="text-slate-700 mb-5 leading-relaxed text-lg">{currentTour.description}</p>
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-sm font-bold text-purple-800 mb-2">【使うキーワード】（3つ以上）</p>
+                  <div className="flex flex-wrap gap-2">
+                    {currentTour.keywords.map(kw => (
+                      <span key={kw} className="bg-white text-purple-700 px-4 py-1.5 rounded-full text-sm border border-purple-200 font-bold shadow-sm">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <textarea
+                className="w-full h-48 p-4 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none font-mono text-lg bg-slate-50 transition-colors"
+                placeholder="ここに英文を入力してください。"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+              ></textarea>
+
+              {error && (
+                <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-lg flex items-start gap-2 text-sm border border-red-200">
+                  <Icons.AlertCircle size={18} className="mt-0.5 shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  onClick={handleGrade}
+                  disabled={isGradingLoading || !inputText.trim() || energy <= 0}
+                  className={`px-8 py-3.5 rounded-xl font-bold shadow-md flex items-center gap-2 transition-all 
+                    ${energy > 0 
+                      ? 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-lg active:transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed' 
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
+                >
+                  {isGradingLoading ? (
+                    <><Icons.RefreshCw className="animate-spin" size={20} /> 先生が採点中...</>
+                  ) : energy <= 0 ? (
+                    <><Icons.Zap size={20} className="text-slate-400" /> エナジー回復待ち</>
+                  ) : (
+                    <>採点してもらう (エナジー -1)</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {result && (
+              <div ref={resultRef} className="bg-white rounded-2xl shadow-xl border-2 border-purple-200 overflow-hidden animate-in mt-8">
+                <div className="bg-gradient-to-r from-purple-50 to-fuchsia-50 p-6 flex flex-col sm:flex-row items-center gap-6 border-b border-purple-100">
+                  <TeacherAvatar score={result.score} />
+                  <div className="flex-1 text-center sm:text-left">
+                    <h2 className="text-2xl font-bold text-purple-900 mb-2">先生からのフィードバック</h2>
+                    <p className="text-purple-800 font-medium leading-relaxed">{result.generalComment}</p>
+                  </div>
+                  <div className="shrink-0 bg-white w-28 h-28 rounded-full flex flex-col items-center justify-center shadow-lg border-4 border-white">
+                    <span className="text-4xl font-black text-purple-600">{result.score}</span>
+                    <span className="text-sm font-bold text-slate-400 mt-1">/ 10点</span>
+                  </div>
+                </div>
+                
+                <div className="p-8">
+                  {result.hints && result.hints.length > 0 ? (
+                    <>
+                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                        <Icons.AlertCircle size={22} className="text-amber-500" />
+                        ここを直すとさらに良くなるよ！（ヒント）
+                      </h3>
+                      <ul className="space-y-4">
+                        {result.hints.map((hint, index) => (
+                          <li key={index} className="bg-amber-50 p-5 rounded-xl text-slate-700 border border-amber-200 shadow-sm leading-relaxed font-medium">
+                            {hint}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <div className="text-center py-10 bg-green-50 rounded-xl border border-green-100">
+                      <Icons.CheckCircle size={56} className="mx-auto text-green-500 mb-4" />
+                      <p className="text-xl font-bold text-green-800">パーフェクト！</p>
+                      <p className="text-green-600 mt-2 font-medium">直すところはありません。よく書けています！</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {showHistory && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-in">
+              <div className="bg-slate-50 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                <div className="bg-white p-5 border-b border-slate-200 flex items-center justify-between shrink-0">
+                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Icons.History className="text-purple-600" size={24} /> 
+                    過去の採点結果
+                  </h2>
+                  <button 
+                    onClick={() => setShowHistory(false)} 
+                    className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-full transition-colors"
+                  >
+                    <Icons.X size={24}/>
+                  </button>
+                </div>
+                
+                <div className="overflow-y-auto p-5 space-y-4 flex-1 bg-slate-100">
+                  {history.length === 0 ? (
+                    <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-3">
+                      <Icons.History size={48} className="text-slate-300" />
+                      <p className="font-medium text-lg">まだ履歴がありません。</p>
+                      <p className="text-sm">採点をすると、ここに過去の結果が保存されます。</p>
+                    </div>
+                  ) : (
+                    history.map(item => (
+                      <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                          <span className="text-sm font-bold text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full self-start sm:self-auto">
+                            {item.tourTitle}
+                          </span>
+                          <span className="text-sm text-slate-500 flex items-center gap-1 font-medium">
+                            <Icons.Clock size={16} />{formatDate(item.createdAt)}
+                          </span>
+                        </div>
+                        
+                        <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg mb-4">
+                          <p className="font-mono text-[15px] text-slate-700 whitespace-pre-wrap">{item.inputText}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 bg-purple-50/50 p-3 rounded-lg border border-purple-50">
+                           <div className="shrink-0 bg-white w-14 h-14 rounded-full flex flex-col items-center justify-center border-2 border-purple-200 shadow-sm">
+                              <span className="text-xl font-black text-purple-600">{item.score}</span>
+                              <span className="text-[10px] font-bold text-slate-400 -mt-1">/ 10点</span>
+                           </div>
+                           <p className="text-[15px] font-medium text-purple-900 flex-1">{item.generalComment}</p>
+                        </div>
+                        
+                        {item.hints && item.hints.length > 0 && (
+                          <div className="mt-3 bg-amber-50/80 p-3 rounded-lg border border-amber-100">
+                            <p className="text-sm font-bold text-amber-700 mb-2 flex items-center gap-1.5">
+                              <Icons.AlertCircle size={16} /> 直すポイントのヒント
+                            </p>
+                            <ul className="space-y-1.5 pl-1">
+                              {item.hints.map((hint, idx) => (
+                                <li key={idx} className="text-sm text-slate-700 leading-relaxed flex items-start gap-2">
+                                   <span className="text-amber-500 mt-0.5">•</span>
+                                   <span>{hint}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
