@@ -34,7 +34,7 @@
     // ==========================================
     // ★ここにGASのウェブアプリURLを貼り付けます！
     // ==========================================
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxs1WHL_dCHWSnQm9yS8T5a6xffQ4RRHfmnQfzw3IX607UDKhrKFxaluLDajlsYsv8V/exec";
+    const GAS_WEB_APP_URL = "YOUR_GAS_WEB_APP_URL_HERE";
 
     const TOURS = {
       ninja: {
@@ -210,27 +210,37 @@
         }
       }, [result]);
 
-      const fetchFromGAS = async (payload, model) => {
+      const fetchFromGAS = async (payload, modelsToTry) => {
         if (GAS_WEB_APP_URL === "YOUR_GAS_WEB_APP_URL_HERE") {
           throw new Error("GASのウェブアプリURLが設定されていません。コード内のURLを書き換えてください。");
         }
         
-        try {
-          const response = await fetch(GAS_WEB_APP_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ model: model, payload: payload })
-          });
+        let lastError = null;
+        for (const model of modelsToTry) {
+          try {
+            const response = await fetch(GAS_WEB_APP_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain" },
+              body: JSON.stringify({ model: model, payload: payload })
+            });
 
-          if (!response.ok) throw new Error(`サーバーエラーが発生しました (${response.status})`);
-          
-          const data = await response.json();
-          if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-          
-          return data;
-        } catch (e) {
-          throw new Error(`通信エラーの詳細: ${e.message}`);
+            if (!response.ok) throw new Error(`サーバーエラーが発生しました (${response.status})`);
+            
+            const data = await response.json();
+            if (data.error) {
+              if (data.error.message && (data.error.message.includes("not found") || data.error.message.includes("not supported"))) {
+                lastError = new Error(data.error.message);
+                continue; // 現在のモデルがダメなら次のモデルを試す
+              }
+              throw new Error(data.error.message || JSON.stringify(data.error));
+            }
+            
+            return data;
+          } catch (e) {
+            lastError = new Error(`通信エラーの詳細: ${e.message}`);
+          }
         }
+        throw lastError; // 全てのモデルで失敗した場合
       };
 
       const handleGrade = async () => {
@@ -265,6 +275,14 @@
         2. 採点基準や減点内訳は教えない。
         3. 正解の英文を直接教えない。
         4. 生徒が自分で気づけるヒントを出す。
+        
+        【出力形式】
+        必ず以下のJSON形式のみを出力してください。Markdown記法（\`\`\`json など）は絶対に含めないでください。
+        {
+          "score": 10,
+          "generalComment": "全体への温かいコメント",
+          "hints": ["ヒント1", "ヒント2"]
+        }
         `;
 
         const payload = {
@@ -279,25 +297,13 @@
             parts: [{ text: String(systemPrompt).trim() }] 
           },
           generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                score: { type: "INTEGER", description: "10点満点の点数" },
-                generalComment: { type: "STRING", description: "全体に対するコメント" },
-                hints: {
-                  type: "ARRAY",
-                  items: { type: "STRING" },
-                  description: "文法ミス等へのヒントのリスト"
-                }
-              },
-              required: ["score", "generalComment", "hints"]
-            }
+            responseMimeType: "application/json"
           }
         };
 
         try {
-          const data = await fetchFromGAS(payload, "gemini-1.5-flash");
+          // ご希望の2.5から試し、ダメなら自動で別のモデルを試す安全機能
+          const data = await fetchFromGAS(payload, ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"]);
           
           const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (resultText) {
