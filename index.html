@@ -303,7 +303,7 @@
 
         try {
           // ご希望の2.5から試し、ダメなら自動で別のモデルを試す安全機能
-          const data = await fetchFromGAS(payload, ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"]);
+          const data = await fetchFromGAS(payload, ["gemini-1.5-flash"]);
           
           const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (resultText) {
