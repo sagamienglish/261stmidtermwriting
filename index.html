@@ -34,7 +34,7 @@
     // ==========================================
     // ★ここにGASのウェブアプリURLを貼り付けます！
     // ==========================================
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx6ZD374NXNBmKeOnQWahr3SfMIXDxxLrxhvRqRn9dD1UUWnRW1Izm1n16UtZYHVVBa/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzRK639o9rmyX9aA2uFlgfHRRPjdm5UWmMvjqXunoICsskIoJiEXCuuh_0C1D9hJGzA/exec";
 
     const TOURS = {
       ninja: {
@@ -303,8 +303,7 @@
 
         try {
           // ご希望の2.5から試し、ダメなら自動で別のモデルを試す安全機能
-          const data = await fetchFromGAS(payload, ["gemini-1.5-flash"]);
-          
+          const data = await fetchFromGAS(payload, ["gemini-2.5-flash"]);
           const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (resultText) {
             const parsedResult = JSON.parse(resultText);
